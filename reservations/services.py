@@ -28,6 +28,10 @@ def validate_and_create_reservation(student, created_by, room, date, start_time,
     if start_time >= end_time:
         raise ValidationError("La hora de inicio debe ser anterior a la hora de término.")
 
+    duration = datetime.combine(date, end_time) - datetime.combine(date, start_time)
+    if duration > timedelta(hours=1):
+        raise ValidationError("La duración máxima de una reserva es de 1 hora.")
+
     # Si la reserva es para hoy, validar que la hora de inicio no haya pasado
     start_dt = timezone.make_aware(datetime.combine(date, start_time))
     if date == today and start_dt < now:

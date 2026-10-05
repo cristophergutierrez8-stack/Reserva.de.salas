@@ -25,9 +25,10 @@ Gestiona salas, usuarios/permisos según diseño, reportes y acciones administra
 - RB09: sala ocupada no puede reservarse nuevamente.
 - RB10: reserva confirmada que termina sin uso y sin cancelación previa puede registrarse como No-Show.
 - RB11: No-Show aplica bloqueo de 3 días calendario.
+- RB12: cada reserva individual puede durar como máximo 1 hora; las reservas confirmadas existentes no se cancelan automáticamente por este cambio.
 
 ## Requisitos funcionales
-RF01 autenticación; RF02 validación de alumno regular; RF03 disponibilidad; RF04 datos de sala; RF05 crear reserva; RF06 conflictos; RF07 capacidad; RF08 máximo diario; RF09 solapamiento/consecutividad; RF10 cancelación; RF11 24 horas; RF12 historial; RF13 confirmación por correo deseable; RF14 reportes; RF15 gestión de salas; RF16 usuarios/permisos; RF17 registro de No-Show; RF18 bloqueo temporal.
+RF01 autenticación; RF02 validación de alumno regular; RF03 disponibilidad; RF04 datos de sala; RF05 crear reserva; RF06 conflictos; RF07 capacidad; RF08 máximo diario; RF09 solapamiento/consecutividad; RF10 cancelación; RF11 24 horas; RF12 historial; RF13 confirmación por correo deseable; RF14 reportes; RF15 gestión de salas; RF16 usuarios/permisos; RF17 registro de No-Show; RF18 bloqueo temporal; RF19 duración máxima de 1 hora por reserva.
 
 ## Estados
 Reserva: `CONFIRMADA`, `CANCELADA`, `NO_SHOW`.

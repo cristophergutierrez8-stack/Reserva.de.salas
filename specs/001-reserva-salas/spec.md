@@ -32,6 +32,7 @@ Aplicación móvil nativa; integración obligatoria con sistema académico exist
 - RF16: usuarios/permisos.
 - RF17: registro de No-Show.
 - RF18: bloqueo temporal de 3 días.
+- RF19: cada reserva individual tiene una duración máxima de 1 hora. Esta regla se valida en backend para reservas directas y asistidas.
 
 ## 5. Casos de uso
 - CU01 Autenticación — Usuario.
@@ -50,9 +51,11 @@ Django Auth, autorización por rol, CSRF, validación de entradas, protección d
 Interfaz clara, responsive, consistente, con mensajes de error comprensibles y acciones según rol.
 
 ## 9. Criterios de aceptación
-Una reserva válida pertenece a usuario autenticado, usa sala disponible, respeta capacidad, máximo diario, no genera solapamiento ni consecutividad y no está impedida por bloqueo. Debe quedar `CONFIRMADA`.
+Una reserva válida pertenece a usuario autenticado, dura como máximo 1 hora, usa sala disponible, respeta capacidad y máximo diario, no genera solapamiento ni consecutividad y no está impedida por bloqueo. Debe quedar `CONFIRMADA`.
+
+La nueva duración máxima aplica a reservas creadas después del cambio; no cancela automáticamente reservas ya confirmadas.
 
 Una reserva inválida debe rechazarse indicando la causa.
 
 ## 10. Pruebas
-CP01–CP20. Los resultados se completarán después de ejecutar el prototipo.
+CP01–CP21. CP21 verifica que una reserva de 1 hora sea válida y que una duración mayor se rechace tanto en el formulario como en el servicio backend. Los resultados se completarán después de ejecutar el prototipo.

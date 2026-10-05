@@ -40,6 +40,7 @@
 - [x] T29 Bloqueo.
 - [x] T30 Crear reserva.
 - [x] T31 Concurrencia/duplicidad.
+- [x] T59 Duración máxima de 1 hora por reserva directa y asistida (CP21).
 
 ## Cancelación e historial
 - [x] T32 Historial.

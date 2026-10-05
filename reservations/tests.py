@@ -10,6 +10,7 @@ from reservations.services import (
     cancel_reservation,
     register_noshow
 )
+from reservations.forms import ReservationForm
 
 
 class ReservationBusinessRulesTests(TestCase):
@@ -71,6 +72,28 @@ class ReservationBusinessRulesTests(TestCase):
         self.assertEqual(reserva.status, Reservation.Status.CONFIRMADA)
         self.assertEqual(reserva.student, self.alumno1)
 
+    def test_cp21_limita_reserva_a_una_hora_en_formulario_y_backend(self):
+        form = ReservationForm(data={
+            'room': self.sala_pequena.pk,
+            'date': self.tomorrow.isoformat(),
+            'start_time': '10:00',
+            'end_time': '11:01',
+            'attendees_count': 2,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('end_time', form.errors)
+
+        with self.assertRaisesRegex(ValidationError, 'duración máxima'):
+            validate_and_create_reservation(
+                student=self.alumno1,
+                created_by=self.secretaria,
+                room=self.sala_pequena,
+                date=self.tomorrow,
+                start_time=time(10, 0),
+                end_time=time(11, 1),
+                attendees_count=2
+            )
+
     def test_cp05_capacidad_maxima_excedida(self):
         """CP05: Rechazo si la cantidad de asistentes supera la capacidad de la sala."""
         with self.assertRaises(ValidationError) as ctx:
@@ -122,50 +145,50 @@ class ReservationBusinessRulesTests(TestCase):
 
     def test_cp07_conflicto_de_sala_ocupada(self):
         """CP07: Rechazo si otra persona intenta reservar la misma sala en horario superpuesto."""
-        # Alumno 1 reserva 10:00 - 11:30
+        # Alumno 1 reserva 10:00 - 11:00
         validate_and_create_reservation(
             student=self.alumno1,
             created_by=self.alumno1,
             room=self.sala_pequena,
             date=self.tomorrow,
             start_time=time(10, 0),
-            end_time=time(11, 30),
+            end_time=time(11, 0),
             attendees_count=2
         )
-        # Alumno 2 intenta reservar 11:00 - 12:00 en la misma sala -> Superposición
+        # Alumno 2 intenta reservar 10:30 - 11:30 en la misma sala -> Superposición
         with self.assertRaises(ValidationError) as ctx:
             validate_and_create_reservation(
                 student=self.alumno2,
                 created_by=self.alumno2,
                 room=self.sala_pequena,
                 date=self.tomorrow,
-                start_time=time(11, 0),
-                end_time=time(12, 0),
+                start_time=time(10, 30),
+                end_time=time(11, 30),
                 attendees_count=2
             )
         self.assertIn("ya fue reservada para ese horario", str(ctx.exception))
 
     def test_cp08_reservas_simultaneas_mismo_alumno(self):
         """CP08: Rechazo si el mismo alumno intenta tener reservas solapadas en salas distintas."""
-        # Alumno 1 reserva Sala Pequeña 10:00 - 11:30
+        # Alumno 1 reserva Sala Pequeña 10:00 - 11:00
         validate_and_create_reservation(
             student=self.alumno1,
             created_by=self.alumno1,
             room=self.sala_pequena,
             date=self.tomorrow,
             start_time=time(10, 0),
-            end_time=time(11, 30),
+            end_time=time(11, 0),
             attendees_count=2
         )
-        # Alumno 1 intenta reservar Sala Grande 11:00 - 12:00 -> Solapamiento propio
+        # Alumno 1 intenta reservar Sala Grande 10:30 - 11:30 -> Solapamiento propio
         with self.assertRaises(ValidationError) as ctx:
             validate_and_create_reservation(
                 student=self.alumno1,
                 created_by=self.alumno1,
                 room=self.sala_grande,
                 date=self.tomorrow,
-                start_time=time(11, 0),
-                end_time=time(12, 0),
+                start_time=time(10, 30),
+                end_time=time(11, 30),
                 attendees_count=2
             )
         self.assertIn("reserva superpuesta", str(ctx.exception))

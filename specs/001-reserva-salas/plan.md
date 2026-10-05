@@ -10,7 +10,7 @@ Modelos, migraciones, usuarios, roles, permisos, login/logout y datos de desarro
 Layout, navegación por rol, formularios, mensajes y responsive.
 
 ## Fase 4 — Disponibilidad y reservas
-Calendario, filtros, salas, horarios, capacidad, máximo diario, conflictos, consecutividad, bloqueo y concurrencia.
+Calendario, filtros, salas, horarios, duración máxima de 1 hora por reserva, capacidad, máximo diario, conflictos, consecutividad, bloqueo y concurrencia.
 
 ## Fase 5 — Cancelación e historial
 Mis reservas, historial, cancelación y regla de 24 horas.

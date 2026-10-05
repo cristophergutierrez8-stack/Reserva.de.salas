@@ -1,7 +1,7 @@
 from django import forms
 from rooms.models import Room
 from reservations.models import Reservation
-from datetime import date
+from datetime import date, datetime, timedelta
 
 
 class ReservationForm(forms.Form):
@@ -28,6 +28,18 @@ class ReservationForm(forms.Form):
         initial=1,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'required': True})
     )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+
+        if start_time and end_time and start_time < end_time:
+            duration = datetime.combine(date.min, end_time) - datetime.combine(date.min, start_time)
+            if duration > timedelta(hours=1):
+                self.add_error('end_time', 'La duración máxima de una reserva es de 1 hora.')
+
+        return cleaned_data
 
 
 class AssistedReservationForm(ReservationForm):
