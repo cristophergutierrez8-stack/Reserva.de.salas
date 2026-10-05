@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Registro de Auditoría{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center g-2">
+    <div class="col-12">
+        <h2 class="fw-bold mb-0"><i class="bi bi-shield-check text-primary me-2"></i>Registro de Auditoría</h2>
+        <p class="text-muted mb-0">Trazabilidad de acciones administrativas y eventos del sistema</p>
+    </div>
+</div>
+
+<div class="card card-custom p-3 p-md-4">
+    {% if logs %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0 text-nowrap">
+            <thead class="table-light">
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Usuario Ejecutor</th>
+                    <th>Acción</th>
+                    <th>Recurso Afectado</th>
+                    <th>Detalles</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td><small class="font-monospace text-muted">{{ log.created_at|date:"d/m/Y H:i:s" }}</small></td>
+                    <td><strong>{{ log.user.username|default:"Sistema" }}</strong></td>
+                    <td><span class="badge bg-primary">{{ log.action }}</span></td>
+                    <td><span class="font-monospace small">{{ log.entity_affected }}</span></td>
+                    <td><small>{{ log.details }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <p class="mb-0">No hay registros de auditoría almacenados.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

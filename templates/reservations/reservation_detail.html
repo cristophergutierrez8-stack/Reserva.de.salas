@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Reserva #{{ reservation.pk }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-4">
+    <div class="col-md-8 col-lg-7">
+        <div class="card card-custom p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-3">
+                <h3 class="fw-bold mb-0">Detalle de Reserva #{{ reservation.pk }}</h3>
+                {% if reservation.status == 'CONFIRMADA' %}
+                    <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>CONFIRMADA</span>
+                {% elif reservation.status == 'CANCELADA' %}
+                    <span class="badge bg-secondary fs-6"><i class="bi bi-x-circle me-1"></i>CANCELADA</span>
+                {% else %}
+                    <span class="badge bg-danger fs-6"><i class="bi bi-exclamation-triangle me-1"></i>NO-SHOW</span>
+                {% endif %}
+            </div>
+
+            <div class="row g-3 my-2">
+                <div class="col-md-6">
+                    <label class="text-muted small d-block">Alumno Beneficiario</label>
+                    <strong class="fs-5">{{ reservation.student.get_full_name|default:reservation.student.username }}</strong>
+                    {% if reservation.student.rut %}<div class="font-monospace text-muted small">RUT: {{ reservation.student.rut }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="text-muted small d-block">Creada por</label>
+                    <strong>{{ reservation.created_by.get_full_name|default:reservation.created_by.username }}</strong>
+                    {% if reservation.created_by != reservation.student %}
+                        <span class="badge bg-warning text-dark ms-1">Reserva Asistida</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="text-muted small d-block">Sala Reservada</label>
+                    <strong class="fs-5">{{ reservation.room.name }}</strong>
+                    <div class="font-monospace text-muted small">Código: {{ reservation.room.code }} | Capacidad: {{ reservation.room.capacity }} pers.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="text-muted small d-block">Asistentes Declarados</label>
+                    <strong class="fs-5">{{ reservation.attendees_count }} personas</strong>
+                </div>
+                <div class="col-md-6">
+                    <label class="text-muted small d-block">Fecha de la Reserva</label>
+                    <strong class="fs-5">{{ reservation.date|date:"l d \d\e F \d\e Y" }}</strong>
+                </div>
+                <div class="col-md-6">
+                    <label class="text-muted small d-block">Bloque Horario</label>
+                    <strong class="fs-5 text-primary">{{ reservation.start_time|time:"H:i" }} - {{ reservation.end_time|time:"H:i" }} hrs</strong>
+                </div>
+            </div>
+
+            {% if reservation.status == 'NO_SHOW' %}
+            <div class="alert alert-danger mt-4 small mb-0">
+                <h6 class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Información de No-Show</h6>
+                <p class="mb-0">Registrado por: <strong>{{ reservation.noshow_registered_by.get_full_name|default:reservation.noshow_registered_by.username }}</strong> el {{ reservation.noshow_registered_at|date:"d/m/Y H:i" }} hrs.</p>
+                <p class="mb-0 text-danger fw-bold">Bloqueo de 3 días aplicado al alumno hasta el {{ reservation.student.blocked_until|date:"d/m/Y H:i" }} hrs.</p>
+            </div>
+            {% endif %}
+
+            <div class="mt-4 pt-3 border-top d-flex justify-content-between">
+                <a href="{% url 'my_reservations' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Volver a Reservas
+                </a>
+
+                {% if reservation.can_be_cancelled and user == reservation.student or user.is_secretaria or user.is_administrador %}
+                <form method="post" action="{% url 'cancel_reservation' reservation.pk %}" onsubmit="return confirm('¿Confirma la cancelación de esta reserva?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i> Cancelar Reserva
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

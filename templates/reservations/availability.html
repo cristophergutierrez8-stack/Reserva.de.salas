@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Consulta de Disponibilidad{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h2 class="fw-bold mb-0">Consulta de Disponibilidad de Salas</h2>
+        <p class="text-muted mb-0">Verifique los horarios ocupados y disponibles por fecha</p>
+    </div>
+</div>
+
+<!-- Filtros de fecha y sala -->
+<div class="card card-custom p-3 mb-4">
+    <form method="get" action="{% url 'availability' %}" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label for="date" class="form-label font-weight-bold">Seleccionar Fecha</label>
+            <input type="date" id="date" name="date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-5">
+            <label for="room_id" class="form-label font-weight-bold">Filtrar por Sala (Opcional)</label>
+            <select id="room_id" name="room_id" class="form-select">
+                <option value="">Todas las Salas Activas</option>
+                {% for r in all_rooms %}
+                    <option value="{{ r.pk }}" {% if selected_room_id == r.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ r.name }} ({{ r.code }}) - Capacidad: {{ r.capacity }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100 fw-semibold">
+                <i class="bi bi-search me-1"></i> Consultar
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Resultados por Sala -->
+<div class="row g-4">
+    {% for item in rooms_availability %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card card-custom h-100">
+            <div class="card-header bg-white pt-3 border-0">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="fw-bold mb-1 text-primary">{{ item.room.name }}</h5>
+                        <span class="badge bg-secondary font-monospace">{{ item.room.code }}</span>
+                    </div>
+                    <span class="badge bg-info text-dark">
+                        <i class="bi bi-people-fill me-1"></i> Cap. {{ item.room.capacity }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">{{ item.room.description|default:"Sin descripción." }}</p>
+                <h6 class="fw-bold mb-2">Reservas para el {{ selected_date|date:"d/m/Y" }}:</h6>
+
+                {% if item.reservations %}
+                <ul class="list-group list-group-flush mb-3">
+                    {% for res in item.reservations %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
+                        <div>
+                            <i class="bi bi-clock me-1 text-danger"></i>
+                            <strong>{{ res.start_time|time:"H:i" }} - {{ res.end_time|time:"H:i" }}</strong>
+                        </div>
+                        <span class="badge bg-danger">Ocupada</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="alert alert-success p-2 small mb-3 text-center">
+                    <i class="bi bi-check-circle me-1"></i> Sin reservas para esta fecha. ¡Completamente disponible!
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white border-0 pb-3">
+                {% if user.is_alumno and not user.is_blocked %}
+                <a href="{% url 'create_reservation' %}?room_id={{ item.room.pk }}&date={{ selected_date|date:'Y-m-d' }}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-plus-circle me-1"></i> Reservar esta Sala
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <p class="text-muted">No se encontraron salas activas.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Salas{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center g-2">
+    <div class="col-12 col-md">
+        <h2 class="fw-bold mb-0">Gestión de Salas</h2>
+        <p class="text-muted mb-0">Administre el inventario de salas, capacidades y estado de disponibilidad</p>
+    </div>
+    {% if user.is_administrador %}
+    <div class="col-12 col-md-auto mt-2 mt-md-0">
+        <a href="{% url 'room_create' %}" class="btn btn-primary shadow-sm w-100 w-md-auto">
+            <i class="bi bi-plus-lg me-1"></i> Crear Nueva Sala
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card card-custom p-3 p-md-4">
+    {% if rooms %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 text-nowrap">
+            <thead class="table-light">
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre de la Sala</th>
+                    <th>Capacidad</th>
+                    <th>Descripción / Equipamiento</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rooms %}
+                <tr>
+                    <td><span class="badge bg-secondary font-monospace fs-6">{{ r.code }}</span></td>
+                    <td><strong>{{ r.name }}</strong></td>
+                    <td><span class="badge bg-info text-dark">{{ r.capacity }} personas</span></td>
+                    <td><small class="text-muted">{{ r.description|default:"---" }}</small></td>
+                    <td>
+                        {% if r.is_active %}
+                            <span class="badge bg-success">Activa</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactiva</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_administrador %}
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'room_edit' r.pk %}" class="btn btn-outline-primary" title="Editar">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            <a href="{% url 'room_toggle' r.pk %}" class="btn btn-outline-{% if r.is_active %}danger{% else %}success{% endif %}" title="Cambiar Estado">
+                                {% if r.is_active %}Desactivar{% else %}Activar{% endif %}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <p class="mb-0">No hay salas registradas.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

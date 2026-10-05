@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card card-custom p-4">
+            <h3 class="fw-bold mb-4"><i class="bi bi-person-gear text-primary me-2"></i>{{ title }}</h3>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="id_username" class="form-label font-weight-bold">Nombre de Usuario *</label>
+                    {{ form.username }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_rut" class="form-label font-weight-bold">RUT (Formato: 12345678-9)</label>
+                    {{ form.rut }}
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label for="id_first_name" class="form-label font-weight-bold">Nombre</label>
+                        {{ form.first_name }}
+                    </div>
+                    <div class="col-6">
+                        <label for="id_last_name" class="form-label font-weight-bold">Apellido</label>
+                        {{ form.last_name }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="id_email" class="form-label font-weight-bold">Correo Electrónico</label>
+                    {{ form.email }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_role" class="form-label font-weight-bold">Rol en el Sistema *</label>
+                    {{ form.role }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_password" class="form-label font-weight-bold">Contraseña{% if target_user %} (Dejar en blanco para mantener la actual){% else %} *{% endif %}</label>
+                    {{ form.password }}
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="form-check">
+                            {{ form.is_regular_student }}
+                            <label for="id_is_regular_student" class="form-check-label font-weight-bold">Alumno Regular</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-check">
+                            {{ form.is_active }}
+                            <label for="id_is_active" class="form-check-label font-weight-bold">Cuenta Activa</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{% url 'user_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary fw-semibold px-4">
+                        <i class="bi bi-save me-1"></i> Guardar Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card card-custom p-4">
+            <h3 class="fw-bold mb-4"><i class="bi bi-door-open text-primary me-2"></i>{{ title }}</h3>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="id_name" class="form-label font-weight-bold">Nombre de la Sala</label>
+                    {{ form.name }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_code" class="form-label font-weight-bold">Código Identificador</label>
+                    {{ form.code }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_capacity" class="form-label font-weight-bold">Capacidad Máxima de Asistentes</label>
+                    {{ form.capacity }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_description" class="form-label font-weight-bold">Descripción / Equipamiento</label>
+                    {{ form.description }}
+                </div>
+                <div class="mb-4 form-check">
+                    {{ form.is_active }}
+                    <label for="id_is_active" class="form-check-label font-weight-bold">Sala Activa y Disponible para Reservas</label>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{% url 'room_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary fw-semibold px-4">
+                        <i class="bi bi-save me-1"></i> Guardar Sala
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card card-custom p-4">
+            <h3 class="fw-bold mb-3"><i class="bi bi-calendar-plus text-primary me-2"></i>{{ title }}</h3>
+            <p class="text-muted small mb-4">Complete el formulario. Recuerde que existe un límite de máximo 2 reservas por día calendario y no se permiten reservas simultáneas ni consecutivas.</p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="id_room" class="form-label font-weight-bold">Sala</label>
+                    {{ form.room }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_date" class="form-label font-weight-bold">Fecha de Reserva</label>
+                    {{ form.date }}
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label for="id_start_time" class="form-label font-weight-bold">Hora Inicio</label>
+                        {{ form.start_time }}
+                    </div>
+                    <div class="col-6">
+                        <label for="id_end_time" class="form-label font-weight-bold">Hora Término</label>
+                        {{ form.end_time }}
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="id_attendees_count" class="form-label font-weight-bold">Cantidad de Asistentes</label>
+                    {{ form.attendees_count }}
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{% url 'availability' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary fw-semibold px-4">
+                        <i class="bi bi-check-circle me-1"></i> Crear Reserva
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
