@@ -71,6 +71,19 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         response = self.client.get(reverse('logout'))
         self.assertRedirects(response, reverse('login'))
 
+    def test_duracion_maxima_informada_en_formularios_de_reserva(self):
+        self.client.force_login(self.alumno)
+        direct_response = self.client.get(reverse('create_reservation'))
+
+        self.assertEqual(direct_response.status_code, 200)
+        self.assertContains(direct_response, 'Duración máxima por reserva: 60 minutos.')
+
+        self.client.force_login(self.secretaria)
+        assisted_response = self.client.get(reverse('assisted_reservation'))
+
+        self.assertEqual(assisted_response.status_code, 200)
+        self.assertContains(assisted_response, 'Duración máxima por reserva: 60 minutos.')
+
     def test_user_creation_requires_explicit_password(self):
         self.client.login(username='admin', password='Password123!')
         user_data = {
