@@ -107,6 +107,14 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         self.assertContains(response, 'method="post"', html=False)
         self.assertContains(response, 'Cerrar sesión', html=False)
 
+    def test_admin_dropdown_loads_bootstrap_bundle(self):
+        self.client.login(username='admin', password='Password123!')
+        response = self.client.get(reverse('dashboard'))
+
+        self.assertContains(response, 'data-bs-toggle="dropdown"', html=False)
+        self.assertContains(response, 'bootstrap.bundle.min.js', html=False)
+        self.assertContains(response, 'Gestión de Usuarios', html=False)
+
     def test_alumno_no_puede_acceder_a_rutas_secretaria_admin(self):
         self.client.login(username='alumno1', password='Password123!')
 
