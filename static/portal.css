@@ -787,9 +787,26 @@ body.portal-public footer {
     }
 
     .navbar-toggler {
-        display: block;
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
         margin-left: auto;
-        border-color: var(--portal-line);
+        padding: 0;
+        border: 1px solid var(--portal-line) !important;
+        border-radius: 12px;
+        background: #fff;
+        color: var(--portal-ink);
+    }
+
+    .navbar-toggler:focus {
+        box-shadow: 0 0 0 3px rgba(233, 62, 145, 0.18);
+    }
+
+    .navbar-toggler .bi-list {
+        color: var(--portal-ink);
+        font-size: 24px;
+        line-height: 1;
     }
 
     .navbar-collapse {

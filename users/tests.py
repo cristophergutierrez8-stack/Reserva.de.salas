@@ -125,6 +125,8 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         response = self.client.get(reverse('dashboard'))
 
         self.assertContains(response, 'Navegación principal', html=False)
+        self.assertContains(response, 'Abrir menú de navegación', html=False)
+        self.assertContains(response, 'bi-list', html=False)
         self.assertContains(response, 'Administración', html=False)
         self.assertContains(response, 'Gestión de Usuarios', html=False)
         self.assertContains(response, reverse('user_list'), html=False)
