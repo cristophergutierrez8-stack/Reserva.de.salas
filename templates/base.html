@@ -13,7 +13,7 @@
     <link href="{% static 'portal.css' %}" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="{% if user.is_authenticated %}portal-authenticated{% else %}portal-public{% endif %}">
+<body class="{% if user.is_authenticated %}portal-authenticated{% else %}portal-public{% endif %}{% if request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'home' %} login-page{% endif %}">
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-xl navbar-dark navbar-custom py-2">
         <div class="container-fluid container-xl">
@@ -100,7 +100,7 @@
                     </a>
                     <form method="post" action="{% url 'logout' %}" name="logout_form" class="d-inline">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-outline-light btn-sm ms-auto ms-xl-0" title="Cerrar sesión">
+                        <button type="submit" class="btn btn-logout btn-sm ms-auto ms-xl-0" title="Cerrar sesión">
                             <i class="bi bi-box-arrow-right me-1"></i> Cerrar sesión
                         </button>
                     </form>

@@ -50,7 +50,9 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         # GET Login page
         response = self.client.get(reverse('login'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Completar usuario de prueba')
+        self.assertContains(response, 'Completar nombre de usuario')
+        self.assertContains(response, 'login-layout', html=False)
+        self.assertContains(response, 'login-submit', html=False)
         self.assertContains(response, "fillUsername('alumno1')")
         self.assertContains(response, "fillUsername('secretaria')")
         self.assertContains(response, "fillUsername('admin')")
@@ -119,6 +121,7 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         self.assertContains(response, 'name="logout_form"', html=False)
         self.assertContains(response, 'method="post"', html=False)
         self.assertContains(response, 'Cerrar sesión', html=False)
+        self.assertContains(response, 'btn-logout', html=False)
 
     def test_admin_navigation_shows_management_links(self):
         self.client.login(username='admin', password='Password123!')
