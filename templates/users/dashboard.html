@@ -3,27 +3,64 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="row mb-4 align-items-center g-2">
-    <div class="col-12 col-md">
-        <h2 class="fw-bold mb-0">Bienvenido(a), {{ user.get_full_name|default:user.username }}</h2>
-        <p class="text-muted mb-0">Panel general de gestión del Sistema de Reserva de Salas</p>
-    </div>
-    <div class="col-12 col-md-auto mt-2 mt-md-0">
-        {% if user.is_alumno %}
-            <a href="{% url 'create_reservation' %}" class="btn btn-primary shadow-sm w-100 w-md-auto">
-                <i class="bi bi-plus-lg me-1"></i> Nueva Reserva Directa
-            </a>
-        {% elif user.is_secretaria or user.is_administrador %}
-            <a href="{% url 'assisted_reservation' %}" class="btn btn-warning text-dark font-weight-bold shadow-sm w-100 w-md-auto">
-                <i class="bi bi-person-plus-fill me-1"></i> Reserva Asistida (RUT)
-            </a>
+<div class="dashboard-page">
+    <header class="dashboard-heading">
+        <div>
+            <p class="dashboard-kicker">PORTAL DE RESERVAS</p>
+            <h1>Bienvenido(a), {{ user.get_full_name|default:user.username }}</h1>
+            <p>Consulta los espacios y organiza tu próxima sesión de estudio.</p>
+        </div>
+        <span class="dashboard-role"><i class="bi bi-person-check"></i>{{ user.get_role_display }}</span>
+    </header>
+
+    <section class="dashboard-hero" aria-labelledby="dashboardHeroTitle">
+        <img class="dashboard-hero-image" src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1800&q=85" alt="Estudiantes colaborando en un espacio de estudio">
+        <div class="dashboard-hero-copy">
+            <p class="dashboard-hero-eyebrow">ESPACIOS PARA ESTUDIAR</p>
+            <h2 id="dashboardHeroTitle">Encuentra un espacio para tu próxima sesión.</h2>
+            <p>Revisa salas disponibles y elige un horario que se ajuste a tu grupo.</p>
+            <div class="hero-actions">
+                <a href="{% url 'availability' %}" class="hero-action"><i class="bi bi-calendar-week"></i> Consultar disponibilidad</a>
+                {% if user.is_alumno %}
+                <a href="{% url 'create_reservation' %}" class="hero-action hero-action-secondary"><i class="bi bi-plus-circle"></i> Nueva reserva</a>
+                {% endif %}
+                {% if user.is_secretaria or user.is_administrador %}
+                <a href="{% url 'assisted_reservation' %}" class="hero-action hero-action-secondary"><i class="bi bi-person-plus"></i> Reserva asistida</a>
+                {% endif %}
+            </div>
+        </div>
+        <span class="dashboard-hero-label"><i class="bi bi-door-open"></i> RESERVA DE SALAS</span>
+    </section>
+
+    <nav class="dashboard-quicklinks" aria-label="Accesos frecuentes">
+        <a href="{% url 'availability' %}" class="quicklink quicklink-pink">
+            <span class="quicklink-icon"><i class="bi bi-calendar-week"></i></span>
+            <span class="quicklink-copy"><strong>Disponibilidad</strong><small>Explora horarios y salas</small></span>
+            <i class="bi bi-arrow-up-right quicklink-arrow"></i>
+        </a>
+        <a href="{% url 'my_reservations' %}" class="quicklink quicklink-blue">
+            <span class="quicklink-icon"><i class="bi bi-journal-text"></i></span>
+            <span class="quicklink-copy"><strong>Mis reservas</strong><small>Consulta solicitudes e historial</small></span>
+            <i class="bi bi-arrow-up-right quicklink-arrow"></i>
+        </a>
+        {% if user.is_secretaria or user.is_administrador %}
+        <a href="{% url 'assisted_reservation' %}" class="quicklink quicklink-mint">
+            <span class="quicklink-icon"><i class="bi bi-person-plus"></i></span>
+            <span class="quicklink-copy"><strong>Reserva asistida</strong><small>Registra una reserva para un alumno</small></span>
+            <i class="bi bi-arrow-up-right quicklink-arrow"></i>
+        </a>
+        {% else %}
+        <a href="{% url 'create_reservation' %}" class="quicklink quicklink-mint">
+            <span class="quicklink-icon"><i class="bi bi-plus-circle"></i></span>
+            <span class="quicklink-copy"><strong>Nueva reserva</strong><small>Solicita un espacio para tu grupo</small></span>
+            <i class="bi bi-arrow-up-right quicklink-arrow"></i>
+        </a>
         {% endif %}
-    </div>
-</div>
+    </nav>
 
 <!-- Alerta de Bloqueo Temporal activo -->
 {% if user.is_blocked %}
-<div class="alert alert-danger shadow-sm border-0 d-flex align-items-center" role="alert">
+<div class="alert alert-danger border-0 d-flex align-items-center" role="alert">
     <i class="bi bi-shield-slash-fill fs-2 me-3 flex-shrink-0"></i>
     <div>
         <h5 class="alert-heading fw-bold mb-1">Restricción Temporal Activa por No-Show</h5>
@@ -34,54 +71,36 @@
 
 <!-- Tarjetas Estadísticas por Rol -->
 {% if user.is_secretaria or user.is_administrador %}
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card card-custom p-3 bg-primary text-white h-100">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="text-white-50 mb-1">Reservas de Hoy</h6>
-                    <h3 class="fw-bold mb-0">{{ today_reservations_count }}</h3>
-                </div>
-                <i class="bi bi-calendar-check fs-1 opacity-50"></i>
-            </div>
+<section class="dashboard-section">
+    <div class="dashboard-section-heading"><h2>Resumen de hoy</h2></div>
+    <div class="dashboard-stats">
+        <div class="dashboard-stat stat-pink">
+            <div><p>Reservas de hoy</p><strong>{{ today_reservations_count }}</strong></div>
+            <span class="dashboard-stat-icon"><i class="bi bi-calendar-check"></i></span>
+        </div>
+        <div class="dashboard-stat stat-blue">
+            <div><p>Salas activas</p><strong>{{ active_rooms_count }}</strong></div>
+            <span class="dashboard-stat-icon"><i class="bi bi-door-open"></i></span>
+        </div>
+        <div class="dashboard-stat stat-lime">
+            <div><p>Alumnos bloqueados</p><strong>{{ blocked_users.count }}</strong></div>
+            <span class="dashboard-stat-icon"><i class="bi bi-person-x"></i></span>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card card-custom p-3 bg-success text-white h-100">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="text-white-50 mb-1">Salas Activas</h6>
-                    <h3 class="fw-bold mb-0">{{ active_rooms_count }}</h3>
-                </div>
-                <i class="bi bi-door-open fs-1 opacity-50"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card card-custom p-3 bg-danger text-white h-100">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="text-white-50 mb-1">Alumnos Bloqueados</h6>
-                    <h3 class="fw-bold mb-0">{{ blocked_users.count }}</h3>
-                </div>
-                <i class="bi bi-person-x fs-1 opacity-50"></i>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 {% endif %}
 
 <!-- Próximas reservas del Alumno -->
 {% if user.is_alumno %}
-<div class="card card-custom p-4 mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="fw-bold mb-0"><i class="bi bi-calendar-event text-primary me-2"></i>Sus Próximas Reservas Confirmadas</h5>
-        <a href="{% url 'my_reservations' %}" class="btn btn-sm btn-outline-primary">Ver Todas</a>
+<section class="dashboard-section">
+    <div class="dashboard-section-heading">
+        <h2>Próximas reservas confirmadas</h2>
+        <a href="{% url 'my_reservations' %}" class="btn btn-sm btn-outline-primary">Ver todas</a>
     </div>
 
     {% if upcoming_reservations %}
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 text-nowrap">
+    <div class="dashboard-panel table-responsive">
+        <table class="table table-hover align-middle text-nowrap">
             <thead class="table-light">
                 <tr>
                     <th>Código</th>
@@ -111,11 +130,12 @@
         </table>
     </div>
     {% else %}
-    <div class="text-center py-4 text-muted">
-        <i class="bi bi-calendar-x fs-1 d-block mb-2 text-secondary"></i>
-        <p class="mb-0">No tiene reservas confirmadas para los próximos días.</p>
+    <div class="dashboard-panel dashboard-empty">
+        <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
+        <p class="mb-0">No tienes reservas confirmadas para los próximos días.</p>
     </div>
     {% endif %}
-</div>
+</section>
 {% endif %}
+</div>
 {% endblock %}
