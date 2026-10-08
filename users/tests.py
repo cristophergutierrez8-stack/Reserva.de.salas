@@ -210,13 +210,21 @@ class InitialAdminBootstrapCommandTests(TestCase):
     strong_password = 'SecureBootstrapPass184!'
 
     def run_bootstrap(self, enabled='true', username=None, password=None):
+        if enabled.lower() == 'true':
+            username = self.username if username is None else username
+            password = self.strong_password if password is None else password
         environment = {'INITIAL_ADMIN_BOOTSTRAP': enabled}
         if username is not None:
             environment['INITIAL_ADMIN_USERNAME'] = username
         if password is not None:
             environment['INITIAL_ADMIN_PASSWORD'] = password
         with patch.dict(os.environ, environment, clear=True):
-            call_command('bootstrap_initial_admin', stdout=StringIO())
+            self.bootstrap_output = StringIO()
+            call_command(
+                'bootstrap_initial_admin',
+                stdout=self.bootstrap_output,
+                stderr=StringIO(),
+            )
 
     def create_attempt(self, username, ip_address):
         return AccessAttempt.objects.create(
@@ -247,14 +255,15 @@ class InitialAdminBootstrapCommandTests(TestCase):
         self.assertFalse(
             User.objects.filter(username__in=['alumno1', 'secretaria']).exists()
         )
+        self.assertEqual(self.bootstrap_output.getvalue().strip(), 'INITIAL ADMIN CREATED')
 
-    def test_repeat_run_does_not_duplicate_or_change_the_admin(self):
+    def test_repeat_run_resets_existing_admin_password_without_changing_permissions(self):
         self.run_bootstrap(
             username=self.username,
             password=self.strong_password,
         )
         admin = User.objects.get(username=self.username)
-        original_password_hash = admin.password
+        original_permissions = (admin.is_active, admin.is_staff, admin.is_superuser)
 
         self.run_bootstrap(
             username=self.username,
@@ -263,8 +272,13 @@ class InitialAdminBootstrapCommandTests(TestCase):
 
         admin.refresh_from_db()
         self.assertEqual(User.objects.count(), 1)
-        self.assertEqual(admin.password, original_password_hash)
-        self.assertTrue(admin.check_password(self.strong_password))
+        self.assertTrue(admin.check_password('DifferentStrongPass184!'))
+        self.assertEqual(
+            (admin.is_active, admin.is_staff, admin.is_superuser), original_permissions
+        )
+        self.assertEqual(
+            self.bootstrap_output.getvalue().strip(), 'INITIAL ADMIN PASSWORD RESET'
+        )
 
     def test_existing_locked_admin_attempts_are_reset_without_changing_permissions(self):
         admin = User.objects.create_user(
@@ -285,7 +299,8 @@ class InitialAdminBootstrapCommandTests(TestCase):
 
         admin.refresh_from_db()
         self.assertEqual(User.objects.count(), 1)
-        self.assertEqual(admin.password, original_password_hash)
+        self.assertNotEqual(admin.password, original_password_hash)
+        self.assertTrue(admin.check_password(self.strong_password))
         self.assertFalse(admin.is_active)
         self.assertFalse(admin.is_staff)
         self.assertFalse(admin.is_superuser)
@@ -297,6 +312,9 @@ class InitialAdminBootstrapCommandTests(TestCase):
         self.assertFalse(
             User.objects.filter(username__in=['alumno1', 'secretaria']).exists()
         )
+        self.assertEqual(
+            self.bootstrap_output.getvalue().strip(), 'INITIAL ADMIN PASSWORD RESET'
+        )
 
     def test_unblocked_admin_preserves_other_axes_attempts(self):
         admin = User.objects.create_superuser(
@@ -305,6 +323,7 @@ class InitialAdminBootstrapCommandTests(TestCase):
             role=User.Role.ADMINISTRADOR,
         )
         admin_permissions = (admin.is_active, admin.is_staff, admin.is_superuser)
+        self.create_attempt(self.username, '198.51.100.20')
         other_attempt = self.create_attempt('alumno1', '192.0.2.10')
 
         self.run_bootstrap()
@@ -315,6 +334,8 @@ class InitialAdminBootstrapCommandTests(TestCase):
             (admin.is_active, admin.is_staff, admin.is_superuser), admin_permissions
         )
         self.assertTrue(AccessAttempt.objects.filter(pk=other_attempt.pk).exists())
+        self.assertFalse(AccessAttempt.objects.filter(username=self.username).exists())
+        self.assertTrue(admin.check_password(self.strong_password))
         self.assertFalse(
             User.objects.filter(username__in=['alumno1', 'secretaria']).exists()
         )
@@ -333,13 +354,14 @@ class InitialAdminBootstrapCommandTests(TestCase):
         self.assertEqual(User.objects.count(), 1)
         self.assertTrue(axes_settings.AXES_ENABLED)
 
-    def test_existing_admin_with_another_username_is_not_modified(self):
+    def test_other_administrator_does_not_prevent_creation_of_configured_admin(self):
         existing_admin = User.objects.create_superuser(
             username='existing_admin',
             password=self.strong_password,
             role=User.Role.ADMINISTRADOR,
         )
         original_password_hash = existing_admin.password
+        other_attempt = self.create_attempt('existing_admin', '198.51.100.25')
 
         self.run_bootstrap(
             username=self.username,
@@ -347,23 +369,36 @@ class InitialAdminBootstrapCommandTests(TestCase):
         )
 
         existing_admin.refresh_from_db()
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.count(), 2)
         self.assertEqual(existing_admin.password, original_password_hash)
-        self.assertFalse(User.objects.filter(username=self.username).exists())
+        self.assertTrue(AccessAttempt.objects.filter(pk=other_attempt.pk).exists())
+        self.assertTrue(User.objects.filter(username=self.username).exists())
+        self.assertTrue(User.objects.get(username=self.username).check_password(
+            'DifferentStrongPass184!'
+        ))
+        self.assertFalse(
+            User.objects.filter(username__in=['alumno1', 'secretaria']).exists()
+        )
 
-    def test_existing_administrator_role_alone_blocks_bootstrap(self):
+    def test_existing_administrator_role_does_not_prevent_creation_of_configured_admin(self):
         existing_admin = User.objects.create_user(
             username='role_admin',
             password=self.strong_password,
             role=User.Role.ADMINISTRADOR,
         )
+        original_password_hash = existing_admin.password
 
         self.run_bootstrap()
 
-        self.assertEqual(User.objects.count(), 1)
-        self.assertFalse(User.objects.filter(username=self.username).exists())
+        self.assertEqual(User.objects.count(), 2)
+        self.assertTrue(User.objects.filter(username=self.username).exists())
+        existing_admin.refresh_from_db()
+        self.assertEqual(existing_admin.password, original_password_hash)
         self.assertFalse(existing_admin.is_staff)
         self.assertFalse(existing_admin.is_superuser)
+        self.assertFalse(
+            User.objects.filter(username__in=['alumno1', 'secretaria']).exists()
+        )
 
     def test_existing_non_admin_username_causes_error_without_modification(self):
         existing_user = User.objects.create_user(
@@ -373,7 +408,9 @@ class InitialAdminBootstrapCommandTests(TestCase):
         )
         original_password_hash = existing_user.password
 
-        with self.assertRaises(CommandError):
+        with self.assertRaisesMessage(
+            CommandError, 'INITIAL ADMIN ALREADY EXISTS NON-ADMIN'
+        ):
             self.run_bootstrap(
                 username=self.username,
                 password='DifferentStrongPass184!',
@@ -385,6 +422,10 @@ class InitialAdminBootstrapCommandTests(TestCase):
         self.assertFalse(existing_user.is_staff)
         self.assertFalse(existing_user.is_superuser)
         self.assertEqual(existing_user.password, original_password_hash)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertFalse(
+            User.objects.filter(username__in=['alumno1', 'secretaria']).exists()
+        )
 
     def test_password_must_satisfy_current_validators(self):
         with self.assertRaises(CommandError):
@@ -399,7 +440,11 @@ class InitialAdminBootstrapCommandTests(TestCase):
                 if flag is not None:
                     environment['INITIAL_ADMIN_BOOTSTRAP'] = flag
                 with patch.dict(os.environ, environment, clear=True):
-                    call_command('bootstrap_initial_admin', stdout=StringIO())
+                    output = StringIO()
+                    call_command('bootstrap_initial_admin', stdout=output)
+                self.assertEqual(
+                    output.getvalue().strip(), 'INITIAL ADMIN BOOTSTRAP DISABLED'
+                )
                 self.assertFalse(User.objects.exists())
 
 
