@@ -12,6 +12,7 @@ urlpatterns = [
     path('', user_views.login_view, name='home'),
     path('login/', user_views.login_view, name='login'),
     path('logout/', user_views.logout_view, name='logout'),
+    path('usuarios/cambiar-contrasena/', user_views.UserPasswordChangeView.as_view(), name='password_change'),
     path('dashboard/', user_views.dashboard_view, name='dashboard'),
 
     # Disponibilidad y Reservas

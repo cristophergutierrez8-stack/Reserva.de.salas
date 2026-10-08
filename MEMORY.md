@@ -28,11 +28,19 @@ Gestiona salas, usuarios/permisos según diseño, reportes y acciones administra
 - RB12: cada reserva individual puede durar como máximo 1 hora; las reservas confirmadas existentes no se cancelan automáticamente por este cambio.
 
 ## Requisitos funcionales
-RF01 autenticación; RF02 validación de alumno regular; RF03 disponibilidad; RF04 datos de sala; RF05 crear reserva; RF06 conflictos; RF07 capacidad; RF08 máximo diario; RF09 solapamiento/consecutividad; RF10 cancelación; RF11 24 horas; RF12 historial; RF13 confirmación por correo deseable; RF14 reportes; RF15 gestión de salas; RF16 usuarios/permisos; RF17 registro de No-Show; RF18 bloqueo temporal; RF19 duración máxima de 1 hora por reserva.
+RF01 autenticación; RF02 validación de alumno regular; RF03 disponibilidad; RF04 datos de sala; RF05 crear reserva; RF06 conflictos; RF07 capacidad; RF08 máximo diario; RF09 solapamiento/consecutividad; RF10 cancelación; RF11 24 horas; RF12 historial; RF13 confirmación por correo; RF14 reportes; RF15 gestión de salas; RF16 usuarios/permisos; RF17 registro de No-Show; RF18 bloqueo temporal; RF19 duración máxima de 1 hora por reserva.
 
 ## Estados
 Reserva: `CONFIRMADA`, `CANCELADA`, `NO_SHOW`.
 Usuario: el bloqueo temporal es una restricción/atributo temporal y no un estado de la reserva.
+
+## Seguridad y operación añadidas
+- RF13 confirma por correo tras crear una reserva, si el alumno tiene una dirección válida.
+- Contraseñas nuevas o cambiadas requieren mínimo 8 caracteres, mayúscula, minúscula, número y símbolo.
+- django-axes registra fallos y bloquea la combinación de usuario/IP por 15 minutos tras 5 intentos.
+- La confirmación por correo se envía después del commit si el alumno tiene una dirección válida.
+- RF14 incorpora filtros por fecha/sala, estado, reservas por fecha/sala, bloqueos vigentes y duración reservada confirmada.
+- El indicador de duración no es un porcentaje de ocupación: el proyecto no define horarios de disponibilidad de salas.
 
 ## Estado de la Implementación
 Prototipo web completamente implementado con Django 4.2.x, Python 3.12 y Bootstrap 5.

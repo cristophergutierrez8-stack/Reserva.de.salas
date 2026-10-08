@@ -80,3 +80,10 @@
 - [x] T56 Trazabilidad.
 - [x] T57 Resultados de pruebas.
 - [x] T58 Revisión final.
+
+## Revisión final para entrega
+- [x] T60 Política de contraseñas en creación y cambio.
+- [x] T61 Protección y registro de intentos fallidos de login.
+- [x] T62 Correo de confirmación tras reservar.
+- [x] T63 Reportes filtrables y pruebas de autorización.
+- [x] T64 Protección CSRF de acciones de cambio de estado y trazabilidad de acciones sensibles.

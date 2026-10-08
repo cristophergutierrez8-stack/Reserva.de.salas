@@ -1,7 +1,10 @@
-from django.test import TestCase
+from django.core import mail
+from django.test import Client, TestCase, override_settings
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.urls import reverse
 from datetime import datetime, date, time, timedelta
+from audit.models import AuditLog
 from users.models import User
 from rooms.models import Room
 from reservations.models import Reservation
@@ -71,6 +74,12 @@ class ReservationBusinessRulesTests(TestCase):
         self.assertIsNotNone(reserva.pk)
         self.assertEqual(reserva.status, Reservation.Status.CONFIRMADA)
         self.assertEqual(reserva.student, self.alumno1)
+        self.assertTrue(
+            AuditLog.objects.filter(
+                entity_affected=f"Reserva #{reserva.pk}",
+                action="Reserva Creada",
+            ).exists()
+        )
 
     def test_cp21_limita_reserva_a_una_hora_en_formulario_y_backend(self):
         form = ReservationForm(data={
@@ -270,6 +279,7 @@ class ReservationBusinessRulesTests(TestCase):
         # CP18: Registrar No-Show por Secretaría
         register_noshow(reserva_pasada, self.secretaria)
         reserva_pasada.refresh_from_db()
+        self.alumno1.refresh_from_db()
         self.assertEqual(reserva_pasada.status, Reservation.Status.NO_SHOW)
 
         # CP19: Verificar que el alumno1 tiene bloqueo de 3 días activo
@@ -288,3 +298,111 @@ class ReservationBusinessRulesTests(TestCase):
                 attendees_count=2
             )
         self.assertIn("bloqueo vigente", str(ctx.exception))
+
+    def test_cp03_consulta_de_disponibilidad_requiere_login_y_muestra_reservas(self):
+        reserva = validate_and_create_reservation(
+            student=self.alumno1,
+            created_by=self.alumno1,
+            room=self.sala_pequena,
+            date=self.tomorrow,
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+            attendees_count=2,
+        )
+        client = Client()
+
+        self.assertRedirects(
+            client.get(reverse('availability')),
+            f"{reverse('login')}?next={reverse('availability')}",
+        )
+        client.force_login(self.alumno2)
+        response = client.get(reverse('availability'), {'date': self.tomorrow.isoformat()})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.sala_pequena.code)
+        room_row = next(
+            item for item in response.context['rooms_availability']
+            if item['room'].pk == self.sala_pequena.pk
+        )
+        self.assertEqual(
+            list(room_row['reservations']),
+            [reserva],
+        )
+
+    def test_cp13_historial_solo_muestra_reservas_del_alumno(self):
+        own_reservation = Reservation.objects.create(
+            student=self.alumno1,
+            created_by=self.alumno1,
+            room=self.sala_pequena,
+            date=self.tomorrow,
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+            attendees_count=2,
+        )
+        other_reservation = Reservation.objects.create(
+            student=self.alumno2,
+            created_by=self.alumno2,
+            room=self.sala_grande,
+            date=self.tomorrow,
+            start_time=time(12, 0),
+            end_time=time(13, 0),
+            attendees_count=2,
+        )
+        client = Client()
+        client.force_login(self.alumno1)
+
+        response = client.get(reverse('my_reservations'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(response.context['reservations']),
+            [own_reservation],
+        )
+        self.assertNotContains(response, f"Reserva #{other_reservation.pk}")
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class ReservationConfirmationEmailTests(TestCase):
+    def setUp(self):
+        self.student = User.objects.create_user(
+            username='correo_alumno',
+            email='alumno@example.test',
+            role=User.Role.ALUMNO,
+        )
+        self.room = Room.objects.create(
+            name='Sala Correo',
+            code='MAIL-01',
+            capacity=10,
+        )
+        self.reservation_date = date.today() + timedelta(days=1)
+
+    def create_reservation(self):
+        return validate_and_create_reservation(
+            student=self.student,
+            created_by=self.student,
+            room=self.room,
+            date=self.reservation_date,
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+            attendees_count=2,
+        )
+
+    def test_cp15_correo_se_envia_despues_de_confirmar_la_reserva(self):
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            reservation = self.create_reservation()
+
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['alumno@example.test'])
+        self.assertIn(str(reservation.pk), mail.outbox[0].subject)
+        self.assertEqual(reservation.status, Reservation.Status.CONFIRMADA)
+
+    def test_reserva_no_falla_si_el_alumno_no_tiene_correo(self):
+        self.student.email = ''
+        self.student.save(update_fields=['email'])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            reservation = self.create_reservation()
+
+        self.assertIsNotNone(reservation.pk)
+        self.assertEqual(len(mail.outbox), 0)

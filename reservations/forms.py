@@ -4,6 +4,22 @@ from reservations.models import Reservation
 from datetime import date, datetime, timedelta
 
 
+class AvailabilityFilterForm(forms.Form):
+    date = forms.DateField(
+        required=False,
+        initial=date.today,
+        label="Seleccionar Fecha",
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+    )
+    room_id = forms.ModelChoiceField(
+        required=False,
+        queryset=Room.objects.filter(is_active=True).order_by('code'),
+        label="Filtrar por Sala (Opcional)",
+        empty_label="Todas las Salas Activas",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+
 class ReservationForm(forms.Form):
     room = forms.ModelChoiceField(
         queryset=Room.objects.filter(is_active=True),

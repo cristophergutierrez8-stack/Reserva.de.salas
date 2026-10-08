@@ -95,9 +95,15 @@
                         </small>
                         </span>
                     </div>
-                    <a href="{% url 'login' %}?switch=1" class="btn btn-outline-warning btn-sm fw-semibold" title="Cambiar a otra cuenta de usuario">
-                        <i class="bi bi-person-gear me-1"></i> Cambiar Usuario
+                    <a href="{% url 'password_change' %}" class="btn btn-outline-light btn-sm fw-semibold">
+                        <i class="bi bi-key me-1"></i> Cambiar contraseña
                     </a>
+                    <form method="post" action="{% url 'login' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" name="switch" value="1" class="btn btn-outline-warning btn-sm fw-semibold" title="Cambiar a otra cuenta de usuario">
+                            <i class="bi bi-person-gear me-1"></i> Cambiar Usuario
+                        </button>
+                    </form>
                     <form method="post" action="{% url 'logout' %}" name="logout_form" class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-logout btn-sm ms-auto ms-xl-0" title="Cerrar sesión">

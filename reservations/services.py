@@ -2,8 +2,11 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import datetime, timedelta
+from rooms.models import Room
+from users.models import User
 from reservations.models import Reservation
 from audit.models import AuditLog
+from reservations.email import send_reservation_confirmation
 
 
 def validate_and_create_reservation(student, created_by, room, date, start_time, end_time, attendees_count):
@@ -45,9 +48,18 @@ def validate_and_create_reservation(student, created_by, room, date, start_time,
 
     # Transacción atómica y control de concurrencia
     with transaction.atomic():
-        # Bloqueo a nivel de filas para prevenir condiciones de carrera simultáneas
+        # Lock stable rows so concurrent requests for an empty time slot serialize.
+        student = User.objects.select_for_update().get(pk=student.pk)
+        room = Room.objects.select_for_update().get(pk=room.pk)
+
+        if student.is_blocked():
+            blocked_str = student.blocked_until.strftime('%d/%m/%Y a las %H:%M')
+            raise ValidationError(f"El alumno tiene un bloqueo vigente hasta {blocked_str}.")
+        if not room.is_active:
+            raise ValidationError("La sala seleccionada no se encuentra activa para reservas.")
+
         # 5. Límite diario de 2 reservas por alumno (RB05)
-        existing_today_count = Reservation.objects.select_for_update().filter(
+        existing_today_count = Reservation.objects.filter(
             student=student,
             date=date,
             status=Reservation.Status.CONFIRMADA
@@ -57,7 +69,7 @@ def validate_and_create_reservation(student, created_by, room, date, start_time,
             raise ValidationError("El alumno ya tiene 2 reservas para este día.")
 
         # 6. Conflicto de Sala (RB04/RB09) - Sala ya reservada en ese horario
-        room_conflict = Reservation.objects.select_for_update().filter(
+        room_conflict = Reservation.objects.filter(
             room=room,
             date=date,
             status=Reservation.Status.CONFIRMADA,
@@ -69,7 +81,7 @@ def validate_and_create_reservation(student, created_by, room, date, start_time,
             raise ValidationError("La sala ya fue reservada para ese horario.")
 
         # 7. Solapamiento de Horario del Alumno (RB06) - Mismo alumno en salas distintas
-        student_conflict = Reservation.objects.select_for_update().filter(
+        student_conflict = Reservation.objects.filter(
             student=student,
             date=date,
             status=Reservation.Status.CONFIRMADA,
@@ -81,7 +93,7 @@ def validate_and_create_reservation(student, created_by, room, date, start_time,
             raise ValidationError("El alumno ya posee una reserva superpuesta en ese horario.")
 
         # 8. Reservas Consecutivas del Alumno (RB06/RB13) - Mismo alumno termina/empieza justo al mismo tiempo
-        consecutive_conflict = Reservation.objects.select_for_update().filter(
+        consecutive_conflict = Reservation.objects.filter(
             student=student,
             date=date,
             status=Reservation.Status.CONFIRMADA
@@ -104,14 +116,15 @@ def validate_and_create_reservation(student, created_by, room, date, start_time,
             status=Reservation.Status.CONFIRMADA
         )
 
-        # Registrar auditoría si fue reserva asistida por Secretaría
-        if created_by != student:
-            AuditLog.objects.create(
-                user=created_by,
-                action="Reserva Asistida Creada",
-                entity_affected=f"Reserva #{reservation.pk}",
-                details=f"Secretaría creó reserva para Alumno {student.username} (RUT: {student.rut}) en sala {room.code}"
-            )
+        AuditLog.objects.create(
+            user=created_by,
+            action="Reserva Creada",
+            entity_affected=f"Reserva #{reservation.pk}",
+            details=f"Reserva creada para alumno {student.username} en sala {room.code}.",
+        )
+        transaction.on_commit(
+            lambda reservation=reservation: send_reservation_confirmation(reservation)
+        )
 
         return reservation
 
@@ -125,18 +138,19 @@ def cancel_reservation(reservation, user):
     """
     Cancela una reserva verificando la regla de 24 horas y permisos.
     """
-    if reservation.status != Reservation.Status.CONFIRMADA:
-        raise ValidationError("Solo se pueden cancelar reservas en estado Confirmada.")
-
-    # Verificar permisos (Alumno dueño, Secretaría o Administrador)
-    if not (user == reservation.student or user.is_secretaria() or user.is_administrador()):
-        raise ValidationError("No tiene permisos para cancelar esta reserva.")
-
-    # Regla de 24 horas (RB08)
-    if not reservation.can_be_cancelled():
-        raise ValidationError("La reserva no puede cancelarse porque faltan menos de 24 horas.")
-
     with transaction.atomic():
+        reservation = Reservation.objects.select_for_update().select_related(
+            'student', 'room'
+        ).get(pk=reservation.pk)
+        if reservation.status != Reservation.Status.CONFIRMADA:
+            raise ValidationError("Solo se pueden cancelar reservas en estado Confirmada.")
+
+        if not (user == reservation.student or user.is_secretaria() or user.is_administrador()):
+            raise ValidationError("No tiene permisos para cancelar esta reserva.")
+
+        if not reservation.can_be_cancelled():
+            raise ValidationError("La reserva no puede cancelarse porque faltan menos de 24 horas.")
+
         reservation.status = Reservation.Status.CANCELADA
         reservation.save(update_fields=['status', 'updated_at'])
 
@@ -155,27 +169,31 @@ def register_noshow(reservation, registered_by_user):
     Registra No-Show en una reserva terminada y aplica el bloqueo de 3 días al alumno.
     Solo personal autorizado (Secretaría / Administrador).
     """
-    if not (registered_by_user.is_secretaria() or registered_by_user.is_administrador()):
-        raise ValidationError("No tiene autorización para registrar No-Show.")
-
-    if not reservation.can_be_marked_noshow():
-        raise ValidationError("Solo se puede registrar No-Show en reservas confirmadas que ya hayan finalizado.")
-
     with transaction.atomic():
-        # Actualizar estado de la reserva
+        reservation = Reservation.objects.select_for_update().select_related(
+            'student', 'room'
+        ).get(pk=reservation.pk)
+        if not (registered_by_user.is_secretaria() or registered_by_user.is_administrador()):
+            raise ValidationError("No tiene autorización para registrar No-Show.")
+
+        if not reservation.can_be_marked_noshow():
+            raise ValidationError("Solo se puede registrar No-Show en reservas confirmadas que ya hayan finalizado.")
+
+        student = User.objects.select_for_update().get(pk=reservation.student_id)
+        reservation.student = student
         reservation.status = Reservation.Status.NO_SHOW
         reservation.noshow_registered_by = registered_by_user
         reservation.noshow_registered_at = timezone.now()
         reservation.save(update_fields=['status', 'noshow_registered_by', 'noshow_registered_at', 'updated_at'])
 
         # Aplicar restricción temporal de 3 días al alumno
-        reservation.student.apply_noshow_block()
+        student.apply_noshow_block()
 
         AuditLog.objects.create(
             user=registered_by_user,
             action="Registro No-Show",
             entity_affected=f"Reserva #{reservation.pk} (Alumno {reservation.student.username})",
-            details=f"No-Show registrado. Bloqueo de 3 días aplicado al alumno {reservation.student.username} hasta {reservation.student.blocked_until}"
+            details=f"No-Show registrado. Bloqueo de 3 días aplicado al alumno {student.username} hasta {student.blocked_until}"
         )
 
     return reservation

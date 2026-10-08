@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.password_validation import validate_password
 from users.models import User
 
 
@@ -32,6 +33,12 @@ class UserAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             self.fields['password'].required = True
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password')
+        if password:
+            validate_password(password, user=self.instance)
+        return password
 
     class Meta:
         model = User

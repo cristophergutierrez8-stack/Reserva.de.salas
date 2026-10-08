@@ -3,11 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from datetime import datetime, date
+from datetime import date
 from rooms.models import Room
 from users.models import User
 from reservations.models import Reservation
-from reservations.forms import ReservationForm, AssistedReservationForm
+from reservations.forms import AvailabilityFilterForm, ReservationForm, AssistedReservationForm
 from reservations.services import (
     validate_and_create_reservation,
     cancel_reservation,
@@ -18,17 +18,17 @@ from reservations.services import (
 @login_required
 def availability_view(request):
     """Consulta de disponibilidad de salas por fecha."""
-    selected_date_str = request.GET.get('date', str(date.today()))
-    selected_room_id = request.GET.get('room_id')
-
-    try:
-        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-    except ValueError:
-        selected_date = date.today()
-
+    form = AvailabilityFilterForm(request.GET or None)
+    selected_date = date.today()
     rooms = Room.objects.filter(is_active=True)
-    if selected_room_id:
-        rooms = rooms.filter(pk=selected_room_id)
+    if form.is_bound:
+        if form.is_valid():
+            selected_date = form.cleaned_data['date'] or date.today()
+            selected_room = form.cleaned_data['room_id']
+            if selected_room:
+                rooms = rooms.filter(pk=selected_room.pk)
+        else:
+            rooms = rooms.none()
 
     # Buscar reservas confirmadas para la fecha
     confirmed_reservations = Reservation.objects.filter(
@@ -45,9 +45,8 @@ def availability_view(request):
         })
 
     context = {
+        'form': form,
         'selected_date': selected_date,
-        'selected_room_id': selected_room_id,
-        'all_rooms': Room.objects.filter(is_active=True),
         'rooms_availability': rooms_availability
     }
     return render(request, 'reservations/availability.html', context)

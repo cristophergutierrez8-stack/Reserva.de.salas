@@ -5,9 +5,34 @@
 {% block content %}
 <div class="row mb-4 align-items-center g-2">
     <div class="col-12">
-        <h2 class="fw-bold mb-0"><i class="bi bi-bar-chart-line text-primary me-2"></i>Reportes y Estadísticas del Sistema</h2>
-        <p class="text-muted mb-0">Resumen de uso de salas, métricas de reservas y estado de sanciones</p>
+        <h2 class="fw-bold mb-0"><i class="bi bi-bar-chart-line text-primary me-2"></i>Reportes e Indicadores</h2>
+        <p class="text-muted mb-0">Indicadores calculados desde las reservas y bloqueos almacenados.</p>
     </div>
+</div>
+
+<div class="card card-custom p-3 p-md-4 mb-4">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-12 col-md-3">
+            <label for="{{ form.date_from.id_for_label }}" class="form-label">{{ form.date_from.label }}</label>
+            {{ form.date_from }}
+            {% for error in form.date_from.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-12 col-md-3">
+            <label for="{{ form.date_to.id_for_label }}" class="form-label">{{ form.date_to.label }}</label>
+            {{ form.date_to }}
+            {% for error in form.date_to.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-12 col-md-3">
+            <label for="{{ form.room.id_for_label }}" class="form-label">{{ form.room.label }}</label>
+            {{ form.room }}
+            {% for error in form.room.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-12 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">Aplicar filtros</button>
+            <a href="{% url 'reports' %}" class="btn btn-outline-secondary">Limpiar</a>
+        </div>
+        {% for error in form.non_field_errors %}<div class="col-12 text-danger small">{{ error }}</div>{% endfor %}
+    </form>
 </div>
 
 <div class="row g-3 mb-4">
@@ -35,52 +60,58 @@
             <h2 class="fw-bold text-danger mb-0">{{ noshow_count }}</h2>
         </div>
     </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="card card-custom p-3 border-start border-warning border-4 h-100">
+            <h6 class="text-muted small">Usuarios bloqueados actualmente</h6>
+            <h2 class="fw-bold text-warning mb-0">{{ active_blocked_users_count }}</h2>
+        </div>
+    </div>
 </div>
 
 <div class="row g-4">
-    <!-- Top Salas más reservadas -->
-    <div class="col-12 col-md-6">
+    <div class="col-12 col-xl-6">
         <div class="card card-custom p-3 p-md-4 h-100">
-            <h5 class="fw-bold mb-3"><i class="bi bi-award me-2 text-warning"></i>Salas Más Solicitadas</h5>
-            {% if top_rooms %}
-            <div class="list-group list-group-flush">
-                {% for r in top_rooms %}
-                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                    <div>
-                        <strong>{{ r.name }}</strong>
-                        <div class="small text-muted font-monospace">{{ r.code }} (Cap: {{ r.capacity }})</div>
-                    </div>
-                    <span class="badge bg-primary rounded-pill fs-6">{{ r.total_res }} reservas</span>
-                </div>
-                {% endfor %}
+            <h5 class="fw-bold mb-3"><i class="bi bi-door-open me-2 text-primary"></i>Reservas y ocupación por sala</h5>
+            <p class="text-muted small">Horas reservadas corresponde a la duración de reservas confirmadas en el período; no es un porcentaje de disponibilidad.</p>
+            {% if room_stats %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr><th>Sala</th><th>Reservas</th><th>Horas reservadas</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for item in room_stats %}
+                        <tr>
+                            <td><strong>{{ item.room.name }}</strong><div class="small text-muted">{{ item.room.code }}</div></td>
+                            <td>{{ item.reservation_count }}</td>
+                            <td>{{ item.reserved_hours }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
             {% else %}
-            <p class="text-muted mb-0">Sin datos aún.</p>
+            <p class="text-muted mb-0">Sin salas registradas.</p>
             {% endif %}
         </div>
     </div>
 
-    <!-- Usuarios con Bloqueos Activos -->
-    <div class="col-12 col-md-6">
-        <div class="card card-custom p-3 p-md-4 h-100 border-danger">
-            <h5 class="fw-bold text-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Alumnos con Bloqueo Vigente</h5>
-            {% if active_blocked_users %}
-            <div class="list-group list-group-flush">
-                {% for u in active_blocked_users %}
-                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                    <div>
-                        <strong>{{ u.get_full_name|default:u.username }}</strong>
-                        <div class="small text-muted font-monospace">RUT: {{ u.rut|default:"N/A" }}</div>
-                    </div>
-                    <span class="badge bg-danger">Hasta {{ u.blocked_until|date:"d/m/Y H:i" }}</span>
-                </div>
-                {% endfor %}
+    <div class="col-12 col-xl-6">
+        <div class="card card-custom p-3 p-md-4 h-100">
+            <h5 class="fw-bold mb-3"><i class="bi bi-calendar3 me-2 text-success"></i>Reservas por período</h5>
+            {% if reservations_by_period %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light"><tr><th>Fecha</th><th>Total de reservas</th></tr></thead>
+                    <tbody>
+                        {% for item in reservations_by_period %}
+                        <tr><td>{{ item.date|date:"d/m/Y" }}</td><td>{{ item.count }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
             {% else %}
-            <div class="text-center py-4 text-muted">
-                <i class="bi bi-shield-check fs-1 text-success d-block mb-2"></i>
-                <p class="mb-0">No hay alumnos con restricciones activas.</p>
-            </div>
+            <p class="text-muted mb-0">No hay reservas para los filtros seleccionados.</p>
             {% endif %}
         </div>
     </div>

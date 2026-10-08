@@ -51,9 +51,12 @@
                             <a href="{% url 'room_edit' r.pk %}" class="btn btn-outline-primary" title="Editar">
                                 <i class="bi bi-pencil"></i> Editar
                             </a>
-                            <a href="{% url 'room_toggle' r.pk %}" class="btn btn-outline-{% if r.is_active %}danger{% else %}success{% endif %}" title="Cambiar Estado">
-                                {% if r.is_active %}Desactivar{% else %}Activar{% endif %}
-                            </a>
+                            <form method="post" action="{% url 'room_toggle' r.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-{% if r.is_active %}danger{% else %}success{% endif %}" title="Cambiar Estado">
+                                    {% if r.is_active %}Desactivar{% else %}Activar{% endif %}
+                                </button>
+                            </form>
                         </div>
                         {% endif %}
                     </td>

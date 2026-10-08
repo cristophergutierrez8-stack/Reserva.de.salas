@@ -26,8 +26,8 @@ Aplicación móvil nativa; integración obligatoria con sistema académico exist
 - RF10: cancelación.
 - RF11: regla de 24 horas.
 - RF12: historial.
-- RF13: confirmación por correo, si se prioriza para implementación.
-- RF14: reportes.
+- RF13: enviar confirmación por correo después de crear satisfactoriamente una reserva, cuando el alumno tenga una dirección válida. SMTP se configura mediante variables de entorno.
+- RF14: reportes para Secretaría y Administración con filtros por fecha y sala; mostrar reservas por estado, sala y período, bloqueos vigentes y horas de reservas confirmadas. Las horas reservadas no representan porcentaje de ocupación porque no se definen horarios de disponibilidad por sala.
 - RF15: gestión de salas.
 - RF16: usuarios/permisos.
 - RF17: registro de No-Show.
@@ -45,7 +45,7 @@ Aplicación móvil nativa; integración obligatoria con sistema académico exist
 Usuario/Perfil, Alumno, Sala, Reserva y Auditoría. Se pueden separar o extender si existe justificación y se actualiza la documentación.
 
 ## 7. Seguridad
-Django Auth, autorización por rol, CSRF, validación de entradas, protección de datos, contraseñas gestionadas por Django, secretos fuera del repositorio y auditoría de acciones sensibles.
+Django Auth, autorización por rol, CSRF, validación de entradas, protección de datos, contraseñas gestionadas por Django con mínimo de 8 caracteres y mayúscula, minúscula, número y carácter especial, bloqueo temporal ante intentos fallidos, secretos fuera del repositorio y auditoría de acciones sensibles.
 
 ## 8. UX
 Interfaz clara, responsive, consistente, con mensajes de error comprensibles y acciones según rol.
@@ -58,4 +58,28 @@ La nueva duración máxima aplica a reservas creadas después del cambio; no can
 Una reserva inválida debe rechazarse indicando la causa.
 
 ## 10. Pruebas
-CP01–CP21. CP21 verifica que una reserva de 1 hora sea válida y que una duración mayor se rechace tanto en el formulario como en el servicio backend. Los resultados se completarán después de ejecutar el prototipo.
+Casos de prueba:
+- CP01 inicio de sesión correcto.
+- CP02 límite de intentos fallidos y bloqueo temporal.
+- CP03 consulta de disponibilidad.
+- CP04 reserva válida.
+- CP05 capacidad máxima.
+- CP06 concurrencia ante intentos simultáneos (requiere validar contra PostgreSQL).
+- CP07 conflicto de sala.
+- CP08 máximo de dos reservas diarias.
+- CP09 cancelación con menos de 24 horas.
+- CP10 cancelación con al menos 24 horas.
+- CP11 reserva asistida.
+- CP12 entradas de filtros tratadas como datos (sin inyección SQL).
+- CP13 historial y autorización de lectura.
+- CP14 registro de auditoría.
+- CP15 correo de confirmación.
+- CP16 autorización por rol.
+- CP17 regresión: una petición GET no cambia el estado de una sala.
+- CP18 registro autorizado de No-Show.
+- CP19 bloqueo temporal de tres días.
+- CP20 rechazo de reservas durante el bloqueo.
+- CP21 duración máxima de una hora, validada en formulario y backend.
+- CP22 consulta de reportes e indicadores, añadido sin renumerar los casos existentes.
+
+Los resultados se completan únicamente después de ejecutar cada caso. CP06 requiere una base PostgreSQL y solicitudes concurrentes; una prueba secuencial con SQLite no acredita concurrencia.

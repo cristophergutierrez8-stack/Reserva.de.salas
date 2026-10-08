@@ -1,17 +1,26 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.views import PasswordChangeView
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.urls import reverse_lazy
+from django.views.decorators.http import require_POST
 from users.forms import LoginForm, UserAdminForm
 from users.models import User
 from reservations.models import Reservation
 from rooms.models import Room
+from audit.models import AuditLog
 from django.utils import timezone
 
 
 def login_view(request):
-    # Si viene el parámetro ?switch=1, cerramos sesión y mostramos el formulario de login
-    if request.GET.get('switch'):
+    if request.method == 'POST' and request.POST.get('switch'):
+        if request.user.is_authenticated:
+            AuditLog.objects.create(
+                user=request.user,
+                action="Cierre de sesión",
+                entity_affected=f"Usuario #{request.user.pk}",
+            )
         logout(request)
         messages.info(request, "Seleccione un nuevo usuario para iniciar sesión.")
         return redirect('login')
@@ -30,6 +39,11 @@ def login_view(request):
                     messages.error(request, "Su cuenta de usuario se encuentra desactivada.")
                 else:
                     login(request, user)
+                    AuditLog.objects.create(
+                        user=user,
+                        action="Inicio de sesión",
+                        entity_affected=f"Usuario #{user.pk}",
+                    )
                     messages.success(request, f"¡Bienvenido(a) {user.get_full_name() or user.username} ({user.get_role_display()})!")
                     return redirect('dashboard')
             else:
@@ -40,10 +54,28 @@ def login_view(request):
     return render(request, 'users/login.html', {'form': form})
 
 
+@require_POST
 def logout_view(request):
+    if request.user.is_authenticated:
+        AuditLog.objects.create(
+            user=request.user,
+            action="Cierre de sesión",
+            entity_affected=f"Usuario #{request.user.pk}",
+        )
     logout(request)
     messages.info(request, "Ha cerrado sesión correctamente.")
     return redirect('login')
+
+
+class UserPasswordChangeView(PasswordChangeView):
+    template_name = 'users/password_change_form.html'
+    success_url = reverse_lazy('dashboard')
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        for field in form.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+        return form
 
 
 @login_required
@@ -95,6 +127,12 @@ def user_create_view(request):
             if password:
                 new_user.set_password(password)
             new_user.save()
+            AuditLog.objects.create(
+                user=request.user,
+                action="Usuario Creado",
+                entity_affected=f"Usuario #{new_user.pk}",
+                details=f"Rol asignado: {new_user.get_role_display()}.",
+            )
             messages.success(request, f"Usuario '{new_user.username}' creado exitosamente.")
             return redirect('user_list')
     else:
@@ -119,6 +157,12 @@ def user_edit_view(request, user_id):
             if password:
                 updated_user.set_password(password)
             updated_user.save()
+            AuditLog.objects.create(
+                user=request.user,
+                action="Usuario Modificado",
+                entity_affected=f"Usuario #{updated_user.pk}",
+                details=f"Rol actualizado: {updated_user.get_role_display()}.",
+            )
             messages.success(request, f"Usuario '{updated_user.username}' actualizado exitosamente.")
             return redirect('user_list')
     else:

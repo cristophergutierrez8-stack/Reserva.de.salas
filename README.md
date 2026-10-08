@@ -36,7 +36,19 @@ Los resultados de pruebas y evidencias se generan solo después de ejecutar el p
 
 El blueprint genera `SECRET_KEY` y enlaza `DATABASE_URL` automáticamente. Render proporciona `RENDER_EXTERNAL_HOSTNAME`, que Django usa para validar el dominio asignado. La configuración actual usa planes gratuitos, sujetos a límites y políticas de retención de Render; revisa sus condiciones antes de usar datos reales.
 
+Para desarrollo local, crea un `.env` a partir de `.env.example` y define `SECRET_KEY` con un valor aleatorio generado por Django. No uses la clave de desarrollo como secreto de producción.
+
+### Correo de confirmación
+
+Las reservas confirmadas envían un correo si el alumno tiene una dirección válida. En Render, configura `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` y `DEFAULT_FROM_EMAIL` con los datos SMTP de un proveedor elegido por la institución. `EMAIL_PORT` usa `587` y `EMAIL_USE_TLS` usa `True` por defecto. No guardes credenciales SMTP en GitHub. En desarrollo, `EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend` escribe el mensaje en la consola en lugar de enviarlo.
+
+La protección de login bloquea una combinación de usuario e IP después de 5 intentos fallidos y aplica un período de espera de 15 minutos. Los intentos quedan registrados por django-axes en la base de datos.
+
+### Reportes
+
+Los reportes están disponibles para Secretaría y Administración en `/reportes/`. Permiten filtrar por fechas y sala e informan reservas por estado, sala y fecha, bloqueos vigentes y horas de reservas confirmadas. Las horas reservadas describen duración registrada; no son un porcentaje de ocupación, ya que el sistema no define horarios disponibles por sala.
+
 ## Acceso para evaluación
 No hay cuentas ni contraseñas demo preconfiguradas. Después del despliegue, crea el primer administrador desde **Shell** en Render con `python manage.py createsuperuser`. Inicia sesión y crea las cuentas de evaluación desde **Usuarios > Nuevo** (`/usuarios/nuevo/`), asignando el rol que corresponda y una contraseña distinta para cada cuenta.
 
-Los botones de la pantalla de login solo completan el nombre de usuario; no completan la contraseña ni envían el formulario. Comparte las contraseñas de evaluación con el profesor por un canal privado, no en este README ni en GitHub. Usa contraseñas temporales y cámbialas después de la evaluación.
+No hay cuentas de demostración en la pantalla de acceso. Comparte las contraseñas de evaluación con el profesor por un canal privado, no en este README ni en GitHub. Usa contraseñas temporales y cámbialas después de la evaluación.

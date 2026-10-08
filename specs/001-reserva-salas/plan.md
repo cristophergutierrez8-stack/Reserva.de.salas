@@ -32,3 +32,10 @@ Ejecutar CP01–CP20, registrar resultados reales, capturas/logs reales y actual
 
 ## Dependencia
 No declarar una funcionalidad como probada hasta ejecutarla. Los diagramas finales deben revisarse contra el código real.
+
+## Tareas complementarias de seguridad y reportes
+- Política de contraseña aplicada en creación y cambio.
+- Protección de intentos fallidos con registro persistente y bloqueo temporal.
+- Correo de confirmación tras el commit de una reserva.
+- Reportes filtrables por fecha y sala con indicadores derivados de datos persistidos.
+- Las operaciones que modifican datos usan POST y CSRF.

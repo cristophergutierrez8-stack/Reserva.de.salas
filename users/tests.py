@@ -1,9 +1,12 @@
 from django.test import TestCase, Client
+from django.test import override_settings
 from django.urls import reverse
+from datetime import date, time, timedelta
+from axes.models import AccessAttempt
+from audit.models import AuditLog
 from users.models import User
 from rooms.models import Room
 from reservations.models import Reservation
-from datetime import date, time, timedelta
 
 
 class ViewsAndPermissionsIntegrationTests(TestCase):
@@ -50,12 +53,9 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         # GET Login page
         response = self.client.get(reverse('login'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Completar nombre de usuario')
         self.assertContains(response, 'login-layout', html=False)
         self.assertContains(response, 'login-submit', html=False)
-        self.assertContains(response, "fillUsername('alumno1')")
-        self.assertContains(response, "fillUsername('secretaria')")
-        self.assertContains(response, "fillUsername('admin')")
+        self.assertNotContains(response, 'login-shortcuts', html=False)
         self.assertNotContains(response, 'Password123!')
 
         # POST Login exitoso
@@ -64,14 +64,21 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
             'password': 'Password123!'
         })
         self.assertRedirects(response, reverse('dashboard'))
+        self.assertTrue(
+            AuditLog.objects.filter(user=self.alumno, action='Inicio de sesión').exists()
+        )
 
         # GET Dashboard autenticado
         response = self.client.get(reverse('dashboard'))
         self.assertEqual(response.status_code, 200)
 
-        # Logout
         response = self.client.get(reverse('logout'))
+        self.assertEqual(response.status_code, 405)
+        response = self.client.post(reverse('logout'))
         self.assertRedirects(response, reverse('login'))
+        self.assertTrue(
+            AuditLog.objects.filter(user=self.alumno, action='Cierre de sesión').exists()
+        )
 
     def test_duracion_maxima_informada_en_formularios_de_reserva(self):
         self.client.force_login(self.alumno)
@@ -87,7 +94,7 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         self.assertContains(assisted_response, 'Duración máxima por reserva: 60 minutos.')
 
     def test_user_creation_requires_explicit_password(self):
-        self.client.login(username='admin', password='Password123!')
+        self.client.force_login(self.admin)
         user_data = {
             'username': 'nuevo_alumno',
             'email': 'nuevo@example.test',
@@ -113,8 +120,39 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         new_user = User.objects.get(username='nuevo_alumno')
         self.assertTrue(new_user.check_password('Password123!'))
 
+        user_data['username'] = 'usuario_debil'
+        user_data['password'] = 'debil'
+        response = self.client.post(reverse('user_create'), user_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('password', response.context['form'].errors)
+        self.assertContains(response, 'mayúscula')
+        self.assertFalse(User.objects.filter(username='usuario_debil').exists())
+
+    def test_password_change_requires_policy_and_updates_hash(self):
+        self.client.force_login(self.alumno)
+        response = self.client.get(reverse('password_change'))
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(reverse('password_change'), {
+            'old_password': 'Password123!',
+            'new_password1': 'weakpass',
+            'new_password2': 'weakpass',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mayúscula', str(response.context['form'].errors))
+
+        response = self.client.post(reverse('password_change'), {
+            'old_password': 'Password123!',
+            'new_password1': 'NewPassword456!',
+            'new_password2': 'NewPassword456!',
+        })
+        self.assertRedirects(response, reverse('dashboard'))
+        self.alumno.refresh_from_db()
+        self.assertTrue(self.alumno.check_password('NewPassword456!'))
+        self.assertNotEqual(self.alumno.password, 'NewPassword456!')
+
     def test_dashboard_includes_secure_logout_form(self):
-        self.client.login(username='alumno1', password='Password123!')
+        self.client.force_login(self.alumno)
         response = self.client.get(reverse('dashboard'))
 
         self.assertEqual(response.status_code, 200)
@@ -124,7 +162,7 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         self.assertContains(response, 'btn-logout', html=False)
 
     def test_admin_navigation_shows_management_links(self):
-        self.client.login(username='admin', password='Password123!')
+        self.client.force_login(self.admin)
         response = self.client.get(reverse('dashboard'))
 
         self.assertContains(response, 'Navegación principal', html=False)
@@ -135,7 +173,7 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         self.assertContains(response, reverse('user_list'), html=False)
 
     def test_alumno_no_puede_acceder_a_rutas_secretaria_admin(self):
-        self.client.login(username='alumno1', password='Password123!')
+        self.client.force_login(self.alumno)
 
         # Reserva asistida restringida
         res_asistida = self.client.get(reverse('assisted_reservation'))
@@ -148,9 +186,11 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         # Usuarios restringido
         res_users = self.client.get(reverse('user_list'))
         self.assertRedirects(res_users, reverse('dashboard'))
+        res_reports = self.client.get(reverse('reports'))
+        self.assertRedirects(res_reports, reverse('dashboard'))
 
     def test_reserva_asistida_secretaria_por_rut(self):
-        self.client.login(username='secretaria', password='Password123!')
+        self.client.force_login(self.secretaria)
 
         response = self.client.post(reverse('assisted_reservation'), {
             'rut': '11.111.111-1',
@@ -167,3 +207,51 @@ class ViewsAndPermissionsIntegrationTests(TestCase):
         self.assertEqual(reserva.created_by, self.secretaria)
         self.assertEqual(reserva.room, self.sala)
         self.assertEqual(reserva.status, Reservation.Status.CONFIRMADA)
+
+    def test_secretaria_no_puede_gestionar_usuarios(self):
+        self.client.force_login(self.secretaria)
+        response = self.client.get(reverse('user_list'))
+        self.assertRedirects(response, reverse('dashboard'))
+
+    def test_usuario_inactivo_no_puede_iniciar_sesion(self):
+        self.alumno.is_active = False
+        self.alumno.save(update_fields=['is_active'])
+
+        response = self.client.post(reverse('login'), {
+            'username': 'alumno1',
+            'password': 'Password123!',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+
+@override_settings(
+    AXES_FAILURE_LIMIT=2,
+    AXES_COOLOFF_TIME=timedelta(minutes=1),
+    AXES_LOCKOUT_PARAMETERS=['username', 'ip_address'],
+)
+class LoginAttemptProtectionTests(TestCase):
+    def setUp(self):
+        User.objects.create_user(
+            username='intentofallido',
+            password='Password123!',
+            role=User.Role.ALUMNO,
+        )
+
+    def test_cp02_bloquea_intentos_fallidos_y_registra_la_peticion(self):
+        for _ in range(2):
+            self.client.post(reverse('login'), {
+                'username': 'intentofallido',
+                'password': 'incorrecta',
+            })
+
+        response = self.client.post(reverse('login'), {
+            'username': 'intentofallido',
+            'password': 'Password123!',
+        })
+
+        self.assertEqual(response.status_code, 429)
+        self.assertTrue(
+            AccessAttempt.objects.filter(username='intentofallido').exists()
+        )

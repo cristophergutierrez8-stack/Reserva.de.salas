@@ -10,35 +10,46 @@
 
             <form method="post">
                 {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
                 <div class="mb-3">
                     <label for="id_username" class="form-label font-weight-bold">Nombre de Usuario *</label>
                     {{ form.username }}
+                    {% for error in form.username.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                 </div>
                 <div class="mb-3">
                     <label for="id_rut" class="form-label font-weight-bold">RUT (Formato: 12345678-9)</label>
                     {{ form.rut }}
+                    {% for error in form.rut.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-6">
                         <label for="id_first_name" class="form-label font-weight-bold">Nombre</label>
                         {{ form.first_name }}
+                        {% for error in form.first_name.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                     </div>
                     <div class="col-6">
                         <label for="id_last_name" class="form-label font-weight-bold">Apellido</label>
                         {{ form.last_name }}
+                        {% for error in form.last_name.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                     </div>
                 </div>
                 <div class="mb-3">
                     <label for="id_email" class="form-label font-weight-bold">Correo Electrónico</label>
                     {{ form.email }}
+                    {% for error in form.email.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                 </div>
                 <div class="mb-3">
                     <label for="id_role" class="form-label font-weight-bold">Rol en el Sistema *</label>
                     {{ form.role }}
+                    {% for error in form.role.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                 </div>
                 <div class="mb-3">
                     <label for="id_password" class="form-label font-weight-bold">Contraseña{% if target_user %} (Dejar en blanco para mantener la actual){% else %} *{% endif %}</label>
                     {{ form.password }}
+                    <div class="form-text">Mínimo 8 caracteres, con mayúscula, minúscula, número y carácter especial.</div>
+                    {% for error in form.password.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                 </div>
                 <div class="row g-3 mb-4">
                     <div class="col-6">

@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.views.decorators.http import require_POST
 from rooms.models import Room
 from rooms.forms import RoomForm
 from audit.models import AuditLog
@@ -63,6 +64,7 @@ def room_edit_view(request, room_id):
 
 
 @login_required
+@require_POST
 def room_toggle_active_view(request, room_id):
     if not request.user.is_administrador():
         messages.error(request, "Solo los administradores pueden modificar el estado de salas.")
