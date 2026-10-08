@@ -6,6 +6,8 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 
+from axes.utils import reset as reset_axes_attempts
+
 from users.models import User
 
 
@@ -20,6 +22,23 @@ class Command(BaseCommand):
             raise CommandError("INITIAL_ADMIN_BOOTSTRAP must be true or false.")
         if bootstrap_enabled != "true":
             self.stdout.write("Initial administrator bootstrap is disabled.")
+            return
+
+        existing_account = User.objects.filter(username="admin").first()
+        if existing_account:
+            if not (
+                existing_account.is_superuser
+                or existing_account.role == User.Role.ADMINISTRADOR
+            ):
+                raise CommandError(
+                    "Bootstrap stopped: the configured username belongs to a non-admin user. "
+                    "No existing account was changed."
+                )
+
+            reset_axes_attempts(username="admin")
+            self.stdout.write(
+                "Initial administrator already exists; its Axes attempts were reset."
+            )
             return
 
         if User.objects.filter(

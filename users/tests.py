@@ -7,6 +7,7 @@ from django.test import TestCase, Client
 from django.test import override_settings
 from django.urls import reverse
 from datetime import date, time, timedelta
+from axes.conf import settings as axes_settings
 from axes.models import AccessAttempt
 from audit.models import AuditLog
 from users.models import User
@@ -217,6 +218,18 @@ class InitialAdminBootstrapCommandTests(TestCase):
         with patch.dict(os.environ, environment, clear=True):
             call_command('bootstrap_initial_admin', stdout=StringIO())
 
+    def create_attempt(self, username, ip_address):
+        return AccessAttempt.objects.create(
+            username=username,
+            ip_address=ip_address,
+            user_agent='test-agent',
+            http_accept='*/*',
+            path_info='/login/',
+            get_data='',
+            post_data='',
+            failures_since_start=5,
+        )
+
     def test_creates_only_the_initial_admin_with_hashed_password(self):
         self.run_bootstrap(
             username=self.username,
@@ -252,6 +265,73 @@ class InitialAdminBootstrapCommandTests(TestCase):
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(admin.password, original_password_hash)
         self.assertTrue(admin.check_password(self.strong_password))
+
+    def test_existing_locked_admin_attempts_are_reset_without_changing_permissions(self):
+        admin = User.objects.create_user(
+            username=self.username,
+            password=self.strong_password,
+            role=User.Role.ADMINISTRADOR,
+            is_active=False,
+            is_staff=False,
+            is_superuser=False,
+        )
+        original_password_hash = admin.password
+        self.create_attempt(self.username, '192.0.2.10')
+        self.create_attempt('alumno1', '192.0.2.10')
+        self.create_attempt('otra_cuenta', '198.51.100.20')
+
+        enabled_before = axes_settings.AXES_ENABLED
+        self.run_bootstrap()
+
+        admin.refresh_from_db()
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(admin.password, original_password_hash)
+        self.assertFalse(admin.is_active)
+        self.assertFalse(admin.is_staff)
+        self.assertFalse(admin.is_superuser)
+        self.assertFalse(AccessAttempt.objects.filter(username=self.username).exists())
+        self.assertTrue(AccessAttempt.objects.filter(username='alumno1').exists())
+        self.assertTrue(AccessAttempt.objects.filter(username='otra_cuenta').exists())
+        self.assertTrue(axes_settings.AXES_ENABLED)
+        self.assertEqual(axes_settings.AXES_ENABLED, enabled_before)
+        self.assertFalse(
+            User.objects.filter(username__in=['alumno1', 'secretaria']).exists()
+        )
+
+    def test_unblocked_admin_preserves_other_axes_attempts(self):
+        admin = User.objects.create_superuser(
+            username=self.username,
+            password=self.strong_password,
+            role=User.Role.ADMINISTRADOR,
+        )
+        admin_permissions = (admin.is_active, admin.is_staff, admin.is_superuser)
+        other_attempt = self.create_attempt('alumno1', '192.0.2.10')
+
+        self.run_bootstrap()
+
+        admin.refresh_from_db()
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(
+            (admin.is_active, admin.is_staff, admin.is_superuser), admin_permissions
+        )
+        self.assertTrue(AccessAttempt.objects.filter(pk=other_attempt.pk).exists())
+        self.assertFalse(
+            User.objects.filter(username__in=['alumno1', 'secretaria']).exists()
+        )
+
+    def test_bootstrap_false_does_not_reset_admin_attempts(self):
+        User.objects.create_superuser(
+            username=self.username,
+            password=self.strong_password,
+            role=User.Role.ADMINISTRADOR,
+        )
+        attempt = self.create_attempt(self.username, '192.0.2.10')
+
+        self.run_bootstrap(enabled='false')
+
+        self.assertTrue(AccessAttempt.objects.filter(pk=attempt.pk).exists())
+        self.assertEqual(User.objects.count(), 1)
+        self.assertTrue(axes_settings.AXES_ENABLED)
 
     def test_existing_admin_with_another_username_is_not_modified(self):
         existing_admin = User.objects.create_superuser(
