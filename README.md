@@ -32,7 +32,7 @@ Los resultados de pruebas y evidencias se generan solo después de ejecutar el p
 1. Sube el proyecto a un repositorio de GitHub. El archivo `.gitignore` excluye `.env`, `db.sqlite3` y archivos generados; no subas secretos ni datos locales.
 2. En Render, selecciona **New +** > **Blueprint**, conecta el repositorio y aplica el blueprint definido en `render.yaml`.
 3. Render creará el servicio web y PostgreSQL. El servicio ejecuta las migraciones al iniciar y sirve los archivos estáticos con WhiteNoise.
-4. Cuando el servicio esté disponible, abre **Shell** en el servicio y ejecuta `python manage.py createsuperuser` para crear el primer administrador.
+4. El blueprint deja desactivado el bootstrap inicial de Administrador por defecto. Para crear el primero sin Render Shell, sigue el procedimiento de **Acceso inicial en Render** antes de desplegar.
 
 El blueprint genera `SECRET_KEY` y enlaza `DATABASE_URL` automáticamente. Render proporciona `RENDER_EXTERNAL_HOSTNAME`, que Django usa para validar el dominio asignado. La configuración actual usa planes gratuitos, sujetos a límites y políticas de retención de Render; revisa sus condiciones antes de usar datos reales.
 
@@ -49,6 +49,16 @@ La protección de login bloquea una combinación de usuario e IP después de 5 i
 Los reportes están disponibles para Secretaría y Administración en `/reportes/`. Permiten filtrar por fechas y sala e informan reservas por estado, sala y fecha, bloqueos vigentes y horas de reservas confirmadas. Las horas reservadas describen duración registrada; no son un porcentaje de ocupación, ya que el sistema no define horarios disponibles por sala.
 
 ## Acceso para evaluación
-No hay cuentas ni contraseñas demo preconfiguradas. Después del despliegue, crea el primer administrador desde **Shell** en Render con `python manage.py createsuperuser`. Inicia sesión y crea las cuentas de evaluación desde **Usuarios > Nuevo** (`/usuarios/nuevo/`), asignando el rol que corresponda y una contraseña distinta para cada cuenta.
+### Acceso inicial en Render
 
-No hay cuentas de demostración en la pantalla de acceso. Comparte las contraseñas de evaluación con el profesor por un canal privado, no en este README ni en GitHub. Usa contraseñas temporales y cámbialas después de la evaluación.
+Para el primer despliegue que necesite una cuenta administradora, configura estas variables en **Render > servicio web > Environment**:
+
+- `INITIAL_ADMIN_BOOTSTRAP=true`
+- `INITIAL_ADMIN_USERNAME=admin`
+- `INITIAL_ADMIN_PASSWORD`: una contraseña fuerte, introducida solo en Render y que cumpla la política vigente.
+
+Después del despliegue, el comando ejecutado tras las migraciones crea únicamente `admin`, si aún no existe ninguna cuenta con rol Administrador ni ningún superusuario. La contraseña se valida con los validadores de Django y se guarda con `set_password()`. No crea `alumno1` ni `secretaria`; tampoco cambia usuarios existentes. Si ya existe `admin` como cuenta no administrativa, el arranque falla con un error sin alterar esa cuenta.
+
+Inicia sesión en `/login/` y confirma que puedes administrar usuarios. **Inmediatamente después**, cambia `INITIAL_ADMIN_BOOTSTRAP` a `false` (o elimínala) y elimina `INITIAL_ADMIN_PASSWORD` de Environment en Render. El comando permanece en el arranque, pero cuando el indicador no es `true` no crea ni modifica usuarios. No escribas la contraseña en GitHub, en este archivo ni en el chat.
+
+Una vez dentro, crea las cuentas Alumno y Secretaría desde **Usuarios > Crear Nuevo Usuario** (`/usuarios/nuevo/`). La gestión normal de usuarios utiliza la interfaz y no necesita Render Shell.

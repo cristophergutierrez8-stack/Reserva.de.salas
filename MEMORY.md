@@ -45,5 +45,5 @@ Usuario: el bloqueo temporal es una restricción/atributo temporal y no un estad
 ## Estado de la Implementación
 Prototipo web completamente implementado con Django 4.2.x, Python 3.12 y Bootstrap 5.
 - Base de datos relacional con modelos `User`, `Room`, `Reservation` y `AuditLog`.
-- La creación de cuentas y salas se realiza desde los flujos administrativos; no se incluyen usuarios demo con contraseñas predefinidas.
+- La creación normal de cuentas y salas se realiza desde los flujos administrativos. El comando opcional `bootstrap_initial_admin` solo crea el primer Administrador cuando `INITIAL_ADMIN_BOOTSTRAP=true`; no crea Alumno ni Secretaría y no modifica cuentas existentes.
 - Suite de pruebas de unidad e integración disponible con `python manage.py test`.

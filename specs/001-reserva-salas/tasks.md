@@ -87,3 +87,4 @@
 - [x] T62 Correo de confirmación tras reservar.
 - [x] T63 Reportes filtrables y pruebas de autorización.
 - [x] T64 Protección CSRF de acciones de cambio de estado y trazabilidad de acciones sensibles.
+- [x] T65 Bootstrap inicial, opt-in y de un solo uso, de la cuenta Administrador para Render Free.
