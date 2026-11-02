@@ -110,6 +110,11 @@ a {
     padding-top: 14px;
 }
 
+/* Bootstrap changes the navbar direction at the xl breakpoint. */
+.navbar-custom .navbar-nav {
+    flex-direction: column;
+}
+
 .navbar-nav .nav-item {
     width: 100%;
 }
