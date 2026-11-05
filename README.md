@@ -36,6 +36,27 @@ Los resultados de pruebas y evidencias se generan solo después de ejecutar el p
 
 El blueprint genera `SECRET_KEY` y enlaza `DATABASE_URL` automáticamente. Render proporciona `RENDER_EXTERNAL_HOSTNAME`, que Django usa para validar el dominio asignado. La configuración actual usa planes gratuitos, sujetos a límites y políticas de retención de Render; revisa sus condiciones antes de usar datos reales.
 
+### Despliegue alternativo gratuito: Koyeb + Neon
+
+Si Render deja de estar disponible, la aplicación puede desplegarse desde el mismo repositorio usando Koyeb para el servicio web y Neon para PostgreSQL. El repositorio incluye un `Dockerfile` que instala dependencias, recopila archivos estáticos, ejecuta migraciones y levanta Gunicorn en el puerto asignado por Koyeb.
+
+1. En Neon crea un proyecto PostgreSQL y copia su cadena de conexión. Debe ser una URL `postgresql://...` con SSL habilitado (`sslmode=require`).
+2. En Koyeb crea una aplicación desde GitHub, selecciona este repositorio y deja el método de construcción como **Dockerfile**.
+3. Configura el puerto HTTP en `8000` y estas variables:
+   - `DATABASE_URL`: cadena de conexión de Neon.
+   - `SECRET_KEY`: valor aleatorio largo.
+   - `DEBUG`: `False`.
+   - `ALLOWED_HOSTS`: `localhost,127.0.0.1`.
+   - `KOYEB_PUBLIC_DOMAIN`: hostname público de Koyeb, sin `https://`.
+   - `CSRF_TRUSTED_ORIGINS`: `https://<hostname-publico-de-koyeb>`.
+   - `INITIAL_ADMIN_BOOTSTRAP`: `true` solo para el primer despliegue.
+   - `INITIAL_ADMIN_USERNAME`: `admin`.
+   - `INITIAL_ADMIN_PASSWORD`: contraseña fuerte temporal, configurada solo en Koyeb.
+4. Después del primer inicio, entra a `/login/`, comprueba el acceso y cambia `INITIAL_ADMIN_BOOTSTRAP` a `false`; elimina `INITIAL_ADMIN_PASSWORD`.
+5. Si necesitas correo de confirmación, agrega las variables SMTP descritas en la sección **Correo de confirmación**.
+
+Neon y Koyeb tienen límites del nivel gratuito que pueden cambiar. No guardes cadenas de conexión, contraseñas ni claves en GitHub. Para conservar datos existentes de Render, exporta PostgreSQL antes de apagarlo e impórtalo en Neon; no uses una base SQLite para migrar datos de producción.
+
 Para desarrollo local, crea un `.env` a partir de `.env.example` y define `SECRET_KEY` con un valor aleatorio generado por Django. No uses la clave de desarrollo como secreto de producción.
 
 ### Correo de confirmación
